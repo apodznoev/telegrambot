@@ -25,6 +25,7 @@ public class AvpodBot extends TelegramLongPollingBot {
 
     private final String token;
     private final CloudWrapper cloudWrapper;
+    private final PersistentStorageWrapper persistentStorage;
     private final RestTemplate restTemplate;
 
     @Override
@@ -56,11 +57,22 @@ public class AvpodBot extends TelegramLongPollingBot {
     }
 
     private List<SendMessage> processTextContent(Optional<String> textOpt, User from, Chat chat) {
-        return textOpt.map(text -> Collections.singletonList(new SendMessage() // Create a message object object
-                .setChatId(chat.getId())
-                .setText(
-                        String.format("Hello, this is echo %s and some random content from my bot %f", text, Math.random())
-                ))).orElse(Collections.emptyList());
+        return textOpt.map(text -> {
+                    if (text.startsWith("/db")) {
+                        return Collections.singletonList(new SendMessage() // Create a message object object
+                                .setChatId(chat.getId())
+                                .setText(
+                                        String.format("Hello, this drive file id %s ",
+                                                persistentStorage.getDriveFileId(from.getUserName()))
+                                ));
+                    }
+                    return Collections.singletonList(new SendMessage() // Create a message object object
+                            .setChatId(chat.getId())
+                            .setText(
+                                    String.format("Hello, this is echo %s and some random content from my bot %f", text, Math.random())
+                            ));
+                }
+        ).orElse(Collections.emptyList());
     }
 
     private List<SendMessage> processImageContent(Optional<List<PhotoSize>> photo, User from, Chat chat) {
@@ -129,7 +141,7 @@ public class AvpodBot extends TelegramLongPollingBot {
         String fileExtension = tryGetExtension(telegramFile);
         java.io.File file = this.downloadFile(telegramFile.getFilePath());
         log.info("Downloaded file with size {} and name {}", file.getTotalSpace(), file.getName());
-        String filename = file.getName().replaceAll("tmp",fileExtension);
+        String filename = file.getName().replaceAll("tmp", fileExtension);
         java.io.File renamed = new File(filename);
         Files.copy(file, renamed);
         return renamed;

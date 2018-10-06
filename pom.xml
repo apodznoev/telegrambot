@@ -67,6 +67,12 @@
             <artifactId>google-oauth-client-jetty</artifactId>
             <version>1.23.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-dynamodb</artifactId>
+            <version>1.11.422</version>
+        </dependency>
+
         <!-- <dependency>
              <groupId>com.amazonaws</groupId>
              <artifactId>aws-lambda-java-core</artifactId>
