@@ -1,8 +1,9 @@
-package de.avpod.telegrambot;
+package de.avpod.telegrambot.aws;
 
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
+import de.avpod.telegrambot.PersistentStorageWrapper;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor

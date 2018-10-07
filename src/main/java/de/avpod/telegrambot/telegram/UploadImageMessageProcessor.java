@@ -1,5 +1,8 @@
-package de.avpod.telegrambot;
+package de.avpod.telegrambot.telegram;
 
+import de.avpod.telegrambot.CloudWrapper;
+import de.avpod.telegrambot.TextContents;
+import de.avpod.telegrambot.UploadFile;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.telegram.telegrambots.api.methods.send.SendMessage;

@@ -1,8 +1,7 @@
-package de.avpod.telegrambot;
+package de.avpod.telegrambot.telegram;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Data;
 import lombok.Value;
 import org.telegram.telegrambots.api.interfaces.BotApiObject;
 

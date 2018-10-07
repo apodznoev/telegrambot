@@ -1,11 +1,11 @@
-package de.avpod.telegrambot;
+package de.avpod.telegrambot.aws;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PutObjectResult;
+import de.avpod.telegrambot.CloudWrapper;
+import de.avpod.telegrambot.UploadFile;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-
-import java.io.File;
 
 @AllArgsConstructor
 @Log4j2

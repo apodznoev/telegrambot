@@ -1,4 +1,4 @@
-package de.avpod.telegrambot;
+package de.avpod.telegrambot.telegram;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;

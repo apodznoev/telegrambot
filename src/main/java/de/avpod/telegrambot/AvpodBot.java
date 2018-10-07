@@ -1,5 +1,6 @@
 package de.avpod.telegrambot;
 
+import de.avpod.telegrambot.telegram.MessageProcessor;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.telegram.telegrambots.api.objects.Message;

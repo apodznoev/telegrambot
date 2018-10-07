@@ -1,9 +1,11 @@
-package de.avpod.telegrambot;
+package de.avpod.telegrambot.google;
 
 import com.google.api.client.http.FileContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import de.avpod.telegrambot.CloudWrapper;
+import de.avpod.telegrambot.UploadFile;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 

@@ -1,5 +1,9 @@
-package de.avpod.telegrambot;
+package de.avpod.telegrambot.telegram;
 
+import de.avpod.telegrambot.AvpodBot;
+import de.avpod.telegrambot.CloudWrapper;
+import de.avpod.telegrambot.aws.DynamoDBConfguration;
+import de.avpod.telegrambot.google.GoogleDriveConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
@@ -71,6 +75,7 @@ public class TelegramBotConfiguration {
                                                      CloudWrapper cloudWrapper,
                                                      Executor handlerExecutor) {
         return Arrays.asList(
+                new CustomKeybardTextMessageProcessor(),
                 new UploadDocumentMessageProcessor(telegramFilesUploader, cloudWrapper,handlerExecutor),
                 new UploadImageMessageProcessor(telegramFilesUploader, cloudWrapper,handlerExecutor),
                 new FallbackTextMessageProcessor()
