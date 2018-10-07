@@ -5,13 +5,19 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.web.client.RestTemplate;
+import org.telegram.telegrambots.ApiConstants;
 import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.TelegramBotsApi;
 import org.telegram.telegrambots.exceptions.TelegramApiRequestException;
 import org.telegram.telegrambots.generics.BotSession;
 import org.telegram.telegrambots.generics.LongPollingBot;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 @Configuration
 @Import({GoogleDriveConfiguration.class, DynamoDBConfguration.class})
@@ -30,10 +36,38 @@ public class TelegramBotConfiguration {
 
     @Bean
     LongPollingBot telegramBot(CloudWrapper cloudWrapper, PersistentStorageWrapper persistentStorageWrapper) {
-        return new AvpodBot(token, cloudWrapper, persistentStorageWrapper, new RestTemplateBuilder()
+        return new AvpodBot(
+                token,
+                messageProcessors(
+                        new TelegramFilesLoader(token, ApiConstants.BASE_URL + token + "/",
+                                restTemplate()
+                        ), cloudWrapper
+                ),
+                responseExecutor()
+        );
+    }
+
+    @Bean
+    RestTemplate restTemplate() {
+        return new RestTemplateBuilder()
                 .messageConverters(Collections.emptyList())
                 .setConnectTimeout(30 * 1000)
                 .setReadTimeout(30 * 1000)
-                .build());
+                .build();
+    }
+
+
+    private Executor responseExecutor() {
+        return Executors.newSingleThreadExecutor();
+    }
+
+    private List<MessageProcessor> messageProcessors(TelegramFilesLoader telegramFilesUploader,
+                                                     CloudWrapper cloudWrapper) {
+        return Arrays.asList(
+                new UploadDocumentMessageProcessor(telegramFilesUploader, cloudWrapper),
+                new UploadImageMessageProcessor(telegramFilesUploader, cloudWrapper),
+                new FallbackTextMessageProcessor()
+
+        );
     }
 }
