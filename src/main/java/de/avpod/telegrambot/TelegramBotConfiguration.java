@@ -27,24 +27,30 @@ public class TelegramBotConfiguration {
     private String token;
 
     @Bean
-    BotSession avpodTelegramBot(CloudWrapper cloudWrapper, PersistentStorageWrapper persistentStorageWrapper) throws TelegramApiRequestException {
+    BotSession avpodTelegramBot(CloudWrapper cloudWrapper) throws TelegramApiRequestException {
         ApiContextInitializer.init();
         TelegramBotsApi botsApi = new TelegramBotsApi();
         // Register our bot
-        return botsApi.registerBot(telegramBot(cloudWrapper, persistentStorageWrapper));
+        return botsApi.registerBot(telegramBot(cloudWrapper));
     }
 
     @Bean
-    LongPollingBot telegramBot(CloudWrapper cloudWrapper, PersistentStorageWrapper persistentStorageWrapper) {
+    LongPollingBot telegramBot(CloudWrapper cloudWrapper) {
         return new AvpodBot(
                 token,
                 messageProcessors(
                         new TelegramFilesLoader(token, ApiConstants.BASE_URL + token + "/",
                                 restTemplate()
-                        ), cloudWrapper
+                        ),
+                        cloudWrapper,
+                        handlerExecutor()
                 ),
                 responseExecutor()
         );
+    }
+
+    private Executor handlerExecutor() {
+        return Executors.newFixedThreadPool(4);
     }
 
     @Bean
@@ -62,10 +68,11 @@ public class TelegramBotConfiguration {
     }
 
     private List<MessageProcessor> messageProcessors(TelegramFilesLoader telegramFilesUploader,
-                                                     CloudWrapper cloudWrapper) {
+                                                     CloudWrapper cloudWrapper,
+                                                     Executor handlerExecutor) {
         return Arrays.asList(
-                new UploadDocumentMessageProcessor(telegramFilesUploader, cloudWrapper),
-                new UploadImageMessageProcessor(telegramFilesUploader, cloudWrapper),
+                new UploadDocumentMessageProcessor(telegramFilesUploader, cloudWrapper,handlerExecutor),
+                new UploadImageMessageProcessor(telegramFilesUploader, cloudWrapper,handlerExecutor),
                 new FallbackTextMessageProcessor()
 
         );

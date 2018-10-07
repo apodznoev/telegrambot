@@ -10,6 +10,7 @@ import java.io.File;
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 @Log4j2
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class UploadDocumentMessageProcessor implements DocumentMessageProcessor {
     private final TelegramFilesLoader filesLoader;
     private final CloudWrapper cloudWrapper;
+    private final Executor handlerExecutor;
 
     @Override
     public Optional<CompletableFuture<SendMessage>> processDocumentMessage(Document document, Message message) {
@@ -27,24 +29,25 @@ public class UploadDocumentMessageProcessor implements DocumentMessageProcessor 
         long chatId = message.getChat().getId();
 
         CompletableFuture<SendMessage> responseFuture = new CompletableFuture<>();
-        try {
-            File downloadedFile = filesLoader.downloadFile(document.getFileId());
-            String fileName = message.getFrom().getUserName() + "_" + document.getFileName();
-            String cloudIdentifier = uploadToCloud(message.getFrom().getUserName(),
-                    fileName, document.getMimeType(), downloadedFile
-            );
-            responseFuture.complete(new SendMessage()
-                    .setChatId(chatId)
-                    .setText(TextContents.DOCUMENT_UPLOAD_SUCCESS.getText())
-            );
-        } catch (Exception e) {
-            log.error("Cannot download/upload document {}", document.getFileId(), e);
-            responseFuture.complete(new SendMessage()
-                    .setChatId(chatId)
-                    .setText(TextContents.DOCUMENT_UPLOAD_ERROR.getText())
-            );
-        }
-
+        handlerExecutor.execute(() -> {
+            try {
+                File downloadedFile = filesLoader.downloadFile(document.getFileId());
+                String fileName = message.getFrom().getUserName() + "_" + document.getFileName();
+                String cloudIdentifier = uploadToCloud(message.getFrom().getUserName(),
+                        fileName, document.getMimeType(), downloadedFile
+                );
+                responseFuture.complete(new SendMessage()
+                        .setChatId(chatId)
+                        .setText(TextContents.DOCUMENT_UPLOAD_SUCCESS.getText())
+                );
+            } catch (Exception e) {
+                log.error("Cannot download/upload document {}", document.getFileId(), e);
+                responseFuture.complete(new SendMessage()
+                        .setChatId(chatId)
+                        .setText(TextContents.DOCUMENT_UPLOAD_ERROR.getText())
+                );
+            }
+        });
 
         return Optional.of(responseFuture);
     }

@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 @Log4j2
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class UploadImageMessageProcessor implements ImageMessageProcessor {
     private final TelegramFilesLoader filesLoader;
     private final CloudWrapper cloudWrapper;
+    private Executor handlerExecutor;
 
     @Override
     public Optional<CompletableFuture<SendMessage>> processImageMessage(List<PhotoSize> thumbnails, Message message) {
@@ -29,27 +31,30 @@ public class UploadImageMessageProcessor implements ImageMessageProcessor {
         );
         CompletableFuture<SendMessage> responseFuture = new CompletableFuture<>();
 
-        long chatId = message.getChat().getId();
-        thumbnails.sort(Comparator.comparingInt(PhotoSize::getFileSize).reversed());
-        PhotoSize biggestImageInfo = thumbnails.get(0);
-        try {
-            File downloadedFile = filesLoader.downloadFile(biggestImageInfo.getFileId());
-            String fileName = message.getFrom().getUserName() + "_" + downloadedFile.getPath();
-            String mimeType = URLConnection.guessContentTypeFromName(downloadedFile.getName());
-            String cloudIdentifier = uploadToCloud(
-                    message.getFrom().getUserName(), fileName, mimeType, downloadedFile
-            );
-            responseFuture.complete(new SendMessage()
-                    .setChatId(chatId)
-                    .setText(TextContents.DOCUMENT_UPLOAD_SUCCESS.getText())
-            );
-        } catch (Exception e) {
-            log.error("Cannot download/upload image {}", biggestImageInfo.getFileId(), e);
-            responseFuture.complete(new SendMessage()
-                    .setChatId(chatId)
-                    .setText(TextContents.DOCUMENT_UPLOAD_ERROR.getText())
-            );
-        }
+        handlerExecutor.execute(() -> {
+            long chatId = message.getChat().getId();
+            thumbnails.sort(Comparator.comparingInt(PhotoSize::getFileSize).reversed());
+            PhotoSize biggestImageInfo = thumbnails.get(0);
+            try {
+                File downloadedFile = filesLoader.downloadFile(biggestImageInfo.getFileId());
+                String fileName = message.getFrom().getUserName() + "_" + downloadedFile.getPath();
+                String mimeType = URLConnection.guessContentTypeFromName(downloadedFile.getName());
+                String cloudIdentifier = uploadToCloud(
+                        message.getFrom().getUserName(), fileName, mimeType, downloadedFile
+                );
+                responseFuture.complete(new SendMessage()
+                        .setChatId(chatId)
+                        .setText(TextContents.DOCUMENT_UPLOAD_SUCCESS.getText())
+                );
+            } catch (Exception e) {
+                log.error("Cannot download/upload image {}", biggestImageInfo.getFileId(), e);
+                responseFuture.complete(new SendMessage()
+                        .setChatId(chatId)
+                        .setText(TextContents.DOCUMENT_UPLOAD_ERROR.getText())
+                );
+            }
+        });
+
 
         return Optional.of(responseFuture);
     }
