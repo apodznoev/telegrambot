@@ -10,6 +10,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 public class StoredDocument {
     @DynamoDBAttribute(attributeName = "id")
     private String id;

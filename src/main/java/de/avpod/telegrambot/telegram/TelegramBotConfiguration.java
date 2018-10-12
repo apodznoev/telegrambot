@@ -32,7 +32,8 @@ public class TelegramBotConfiguration {
     private String token;
 
     @Bean
-    BotSession avpodTelegramBot(CloudWrapper cloudWrapper, PersistentStorageWrapper persistentStorageWrapper) throws TelegramApiRequestException {
+    BotSession avpodTelegramBot(CloudWrapper cloudWrapper,
+                                PersistentStorageWrapper persistentStorageWrapper) throws TelegramApiRequestException {
         ApiContextInitializer.init();
         TelegramBotsApi botsApi = new TelegramBotsApi();
         // Register our bot
@@ -94,7 +95,7 @@ public class TelegramBotConfiguration {
                                                     PersistentStorageWrapper persistentStorageWrapper,
                                                     ImageTypeRecognitionJobTrigger imageTypeRecognitionJob) {
         return Arrays.asList(
-                new CustomKeybardTextUpdateProcessor(),
+                new CustomKeyboardTextUpdateProcessor(),
                 new UploadDocumentUpdateProcessor(telegramFilesUploader, cloudWrapper,
                         handlerExecutor, persistentStorageWrapper, imageTypeRecognitionJob),
                 new UploadImageUpdateProcessor(telegramFilesUploader, cloudWrapper,

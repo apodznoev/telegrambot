@@ -13,6 +13,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 public class UserInfo {
 
     @DynamoDBHashKey(attributeName = "username")

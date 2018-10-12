@@ -2,6 +2,7 @@ package de.avpod.telegrambot.telegram;
 
 import de.avpod.telegrambot.DocumentType;
 import de.avpod.telegrambot.PersistentStorageWrapper;
+import de.avpod.telegrambot.RecognizeDocumentCallbackData;
 import de.avpod.telegrambot.TextContents;
 import de.avpod.telegrambot.aws.UserInfo;
 import lombok.extern.log4j.Log4j2;
@@ -22,14 +23,16 @@ public class ImageTypeRecognitionJob {
     private final AtomicBoolean active = new AtomicBoolean(true);
     private final PersistentStorageWrapper persistentStorage;
     private final AbsSender bot;
-    private final ImageTypeRecognitionJobTrigger recognitionJobTrigger;
 
-    public ImageTypeRecognitionJob(AbsSender bot, ImageTypeRecognitionJobTrigger recognitionJobTrigger, PersistentStorageWrapper persistentStorage) {
+    ImageTypeRecognitionJob(AbsSender bot,
+                            ImageTypeRecognitionJobTrigger recognitionJobTrigger,
+                            PersistentStorageWrapper persistentStorage) {
         this.bot = bot;
         this.persistentStorage = persistentStorage;
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
             if (!active.get())
                 return;
+
             log.info("Querying users with yet unrecognised images");
             try {
                 Collection<UserInfo> userInfos = persistentStorage.queryUsersForImageRecognition();
@@ -50,8 +53,7 @@ public class ImageTypeRecognitionJob {
 
 
         }, 60, 30, TimeUnit.SECONDS);
-        this.recognitionJobTrigger = recognitionJobTrigger;
-        this.recognitionJobTrigger.addListener(this::scheduleRecognition);
+        recognitionJobTrigger.addListener(this::scheduleRecognition);
     }
 
     private void processUserWithUnrecognizedImages(UserInfo userInfo) {
@@ -70,15 +72,32 @@ public class ImageTypeRecognitionJob {
             for (UnrecognizedDocumentInfo unrecognizedDocumentInfo : unrecognizedDocumentInfoList) {
                 List<InlineKeyboardButton> buttons = new ArrayList<>();
                 for (DocumentType documentType : DocumentType.values()) {
+                    if (documentType == DocumentType.UNKNOWN || documentType == DocumentType.UNKNOWN_REQUESTED)
+                        continue;
+
                     buttons.add(
-                            new InlineKeyboardButton(documentType.getName())
-                                    .setCallbackData(documentType + "_" + unrecognizedDocumentInfo.getCloudFileId())
+                            new InlineKeyboardButton(documentType.getText())
+                                    .setCallbackData(
+                                            new RecognizeDocumentCallbackData(
+                                                    documentType,
+                                                    false,
+                                                    unrecognizedDocumentInfo.getId(),
+                                                    unrecognizedDocumentInfo.getCloudFileId()
+                                            ).serialize()
+                                    )
                     );
                 }
                 buttons.add(
                         new InlineKeyboardButton("Dunno, delete file")
-                                .setCallbackData("delete" + "_" + unrecognizedDocumentInfo.getCloudFileId())
+                                .setCallbackData(
+                                        new RecognizeDocumentCallbackData(
+                                                null,
+                                                true,
+                                                unrecognizedDocumentInfo.getId(),
+                                                unrecognizedDocumentInfo.getCloudFileId()
+                                        ).serialize())
                 );
+
                 if (unrecognizedDocumentInfo.getTelegramThumbnailId().isPresent()) {
                     bot.sendPhoto(new SendPhoto()
                             .setChatId(unrecognizedDocumentInfo.getChatId())
@@ -107,12 +126,12 @@ public class ImageTypeRecognitionJob {
                 persistentStorage.markDocumentAsNotifiedForRecognition(username, unrecognizedDocumentInfo.getId());
             }
         } catch (Exception e) {
-            log.error("Got exception during processing images foru ser {}", username, e);
+            log.error("Got exception during processing images for user {}", username, e);
         }
     }
 
 
-    public void scheduleRecognition() {
+    private void scheduleRecognition() {
         log.info("Triggered image recognition job");
         active.set(true);
     }

@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Log4j2
-public class CustomKeybardTextUpdateProcessor implements TextUpdateProcessor {
+public class CustomKeyboardTextUpdateProcessor implements TextUpdateProcessor {
 
     @Override
     public boolean isResponsible(String messageText) {

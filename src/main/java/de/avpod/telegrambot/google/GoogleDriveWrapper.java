@@ -5,6 +5,7 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import de.avpod.telegrambot.CloudWrapper;
+import de.avpod.telegrambot.DocumentType;
 import de.avpod.telegrambot.UploadFile;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -75,4 +76,62 @@ public class GoogleDriveWrapper implements CloudWrapper {
         return file.getId();
     }
 
+    @Override
+    public void recognizeDocument(String cloudId, DocumentType documentType) {
+        log.info("Moving file with id {} to folder {}", cloudId, documentType.getSubfolderName());
+        try {
+            File file = drive.files().get(cloudId)
+                    .setFields("parents")
+                    .execute();
+            StringBuilder previousParents = new StringBuilder();
+            for (String parent : file.getParents()) {
+                previousParents.append(parent);
+                previousParents.append(',');
+            }
+            log.info("Previous parent folders for file {} were {}", cloudId, previousParents);
+
+            FileList givenDocumentTypeFolderSearch = drive.files()
+                    .list()
+                    .setQ("trashed=false and " +
+                            "mimeType='application/vnd.google-apps.folder' and " +
+                            "parents in '" + previousParents.toString() + "' and " +
+                            "name='" + documentType.getSubfolderName() + "'")
+                    .execute();
+            String documentTypeFolderId;
+            if (givenDocumentTypeFolderSearch.getFiles().isEmpty()) {
+                log.info("There is no folder for document type {} yet, creating new", documentType);
+                File driveUserFolder = new File();
+                driveUserFolder.setName(documentType.getSubfolderName());
+                driveUserFolder.setMimeType("application/vnd.google-apps.folder");
+                driveUserFolder.setParents(file.getParents());
+                driveUserFolder = drive.files().create(driveUserFolder)
+                        .setFields("id, parents")
+                        .execute();
+                documentTypeFolderId = driveUserFolder.getId();
+                log.info("Document type {} folder was created with id {}", documentType, documentTypeFolderId);
+            } else {
+                documentTypeFolderId = givenDocumentTypeFolderSearch.getFiles().get(0).getId();
+                log.info("Document type {} folder was found with id {}", documentTypeFolderId);
+            }
+            file = drive.files().update(cloudId, null)
+                    .setAddParents(previousParents.append(documentTypeFolderId).toString())
+                    .setRemoveParents(previousParents.toString())
+                    .setFields("id, parents")
+                    .execute();
+            log.info("File {} successfully moved to new directory", cloudId);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void deleteDocument(String cloudId) {
+        log.info("Deleting file {}", cloudId);
+        try {
+            drive.files().delete(cloudId);
+            log.info("File {} successfully deleted", cloudId);
+        } catch (IOException e) {
+            log.error("Cannot delete file with id {}", cloudId, e);
+        }
+    }
 }

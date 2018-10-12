@@ -75,6 +75,7 @@ public class AvpodBot extends TelegramLongPollingBot {
                 handled.map((future) -> future.thenAcceptAsync((processingResult) -> {
                     if (processingResult == null)
                         return;
+
                     if (processingResult.getResponseMessage().isPresent()) {
                         try {
                             log.info("Sending processing result to user {}", update.getMessage().getFrom().getUserName());

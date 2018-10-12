@@ -3,6 +3,7 @@ package de.avpod.telegrambot.aws;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PutObjectResult;
 import de.avpod.telegrambot.CloudWrapper;
+import de.avpod.telegrambot.DocumentType;
 import de.avpod.telegrambot.UploadFile;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -25,4 +26,13 @@ public class S3Wrapper implements CloudWrapper {
         return result.getContentMd5();
     }
 
+    @Override
+    public void recognizeDocument(String cloudId, DocumentType documentType) {
+        //todo
+    }
+
+    @Override
+    public void deleteDocument(String cloudId) {
+        //todo
+    }
 }

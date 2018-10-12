@@ -29,4 +29,8 @@ public interface PersistentStorageWrapper {
     void markDocumentAsNotifiedForRecognition(String username, String documentId);
 
     UserInfo getFullInfo(String userName);
+
+    boolean deleteDocument(String userName, String documentId);
+
+    boolean updateDocumentType(String userName, String documentId, DocumentType documentType);
 }

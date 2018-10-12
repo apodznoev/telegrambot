@@ -4,6 +4,7 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBScanExpression;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import de.avpod.telegrambot.DocumentType;
 import de.avpod.telegrambot.FlowStatus;
 import de.avpod.telegrambot.PersistentStorageWrapper;
 import de.avpod.telegrambot.telegram.UnrecognizedDocumentInfo;
@@ -16,9 +17,6 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 @Log4j2
 public class DynamoDBWrapper implements PersistentStorageWrapper {
-    private static final String UNKNOWN_DOCUMENT_TYPE = "UNKNOWN";
-    private static final String UNKNOWN_NOTIFIED_DOCUMENT_TYPE = "UNKNOWN_NOTIFIED";
-    private static final String REQUESTED_DOCUMENT_TYPE = "REQUESTED";
     private final DynamoDBMapper mapper;
     private final DynamoDBMapperConfig mapperConfig;
 
@@ -51,7 +49,7 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
                 .telegramThumbnailId(telegramThumbnailId.orElse(null))
                 .telegramFileId(telegramFileId)
                 .cloudIdentifier(cloudIdentifier)
-                .documentType(UNKNOWN_DOCUMENT_TYPE)
+                .documentType(DocumentType.UNKNOWN.name())
                 .savedFilename(cloudFileName)
                 .build();
         userInfo.getDocuments().add(document);
@@ -80,14 +78,6 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
                 mapperConfig.getConsistentReads(),
                 mapperConfig.getTableNameOverride()
         ));
-//        PutItemOutcome outcome = table
-//                .putItem(new Item()
-//                        .withPrimaryKey(USERNAME_COLUMN, userName)
-//                        .withString(":st", flowStatus.name())
-//                        .withString(":first", firstName)
-//                        .withString(":last", lastName)
-//                        .withNumber(":chat", chatId)
-//                        .withList(DOCUMENTS_COLUMN, Collections.emptyList()));
     }
 
     @Override
@@ -99,17 +89,6 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
                 mapperConfig.getConsistentReads(),
                 mapperConfig.getTableNameOverride()
         ));
-//        UpdateItemSpec updateItemSpec = new UpdateItemSpec()
-//                .withPrimaryKey(new PrimaryKey(USERNAME_COLUMN, userName))
-//                .withUpdateExpression("set #st = :st")
-//                .withNameMap(new NameMap()
-//                        .with("#st", STATUS_COLUMN)
-//                )
-//                .withValueMap(new ValueMap()
-//                        .withString(":st", flowStatus.name())
-//                )
-//                .withReturnValues(ReturnValue.UPDATED_NEW);
-//        UpdateItemOutcome outcome = table.updateItem(updateItemSpec);
     }
 
     @Override
@@ -128,7 +107,7 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
         return scanResult.stream()
                 .filter((userInfo) ->
                         userInfo.getDocuments().stream().anyMatch((document) ->
-                                document.getDocumentType().equals(UNKNOWN_DOCUMENT_TYPE)
+                                document.getDocumentType().equals(DocumentType.UNKNOWN.name())
                         )).collect(Collectors.toList());
     }
 
@@ -138,7 +117,7 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
         UserInfo userInfo = mapper.load(UserInfo.class, username, mapperConfig);
         return userInfo.getDocuments()
                 .stream()
-                .filter((document) -> document.getDocumentType().equals(UNKNOWN_DOCUMENT_TYPE))
+                .filter((document) -> document.getDocumentType().equals(DocumentType.UNKNOWN.name()))
                 .map((document) ->
                         new UnrecognizedDocumentInfo(
                                 document.getId(),
@@ -153,17 +132,63 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
     @Override
     public void markDocumentAsNotifiedForRecognition(String username, String documentId) {
         log.info("Marking document with id {} as requested for user {}", documentId, username);
-        UserInfo userInfo = getFullInfo(username);
-        userInfo.getDocuments()
-                .stream()
-                .filter((document) -> document.getId().equals(documentId))
-                .forEach((documentToModify) -> documentToModify.setDocumentType(UNKNOWN_NOTIFIED_DOCUMENT_TYPE));
-        mapper.save(userInfo, mapperConfig);
+        doUpdateDocumentType(username, documentId, DocumentType.UNKNOWN_REQUESTED);
     }
 
     @Override
     public UserInfo getFullInfo(String userName) {
         log.info("Getting full user info for user {}", userName);
         return mapper.load(UserInfo.class, userName, mapperConfig);
+    }
+
+    @Override
+    public boolean deleteDocument(String userName, String documentId) {
+        log.info("Deleting document {} for user {}", documentId, userName);
+        UserInfo userInfo = getFullInfo(userName);
+        if (!userInfo.getDocuments().removeIf((document) -> document.getId().equals(documentId))) {
+            log.warn("Cannot delete document with id {} not found for user data {}", documentId, userInfo);
+            return false;
+        }
+        boolean flowFinished = setUserStatusIfNeeded(userInfo);
+        mapper.save(userInfo, mapperConfig);
+        return flowFinished;
+    }
+
+    @Override
+    public boolean updateDocumentType(String userName, String documentId, DocumentType documentType) {
+        return doUpdateDocumentType(userName, documentId, documentType);
+    }
+
+    private boolean setUserStatusIfNeeded(UserInfo userInfo) {
+        log.info("Checking if user {} has finished the flow", userInfo.getUsername());
+        boolean allDocumentsFound;
+        Map<DocumentType, Boolean> documentsPresent = new HashMap<>();
+        for (DocumentType documentType : DocumentType.realDocuments()) {
+            documentsPresent.put(documentType, false);
+        }
+        for (StoredDocument document : userInfo.getDocuments()) {
+            documentsPresent.computeIfPresent(DocumentType.valueOf(document.getDocumentType()), (type, found) -> true);
+        }
+        allDocumentsFound = documentsPresent.values().stream().reduce(true, (previous, next) -> previous && next);
+        log.info("Flow is finished: {} documents status: {}", allDocumentsFound, documentsPresent);
+
+        if (allDocumentsFound) {
+            log.info("All documents found for user {}", userInfo.getUsername());
+            userInfo.setStatus(FlowStatus.FINISHED.name());
+            return true;
+        }
+        return false;
+    }
+
+    private boolean doUpdateDocumentType(String username, String documentId, DocumentType documentType) {
+        log.info("Updating document with id {} with type {} for user {}", documentId, documentType, username);
+        UserInfo userInfo = getFullInfo(username);
+        userInfo.getDocuments()
+                .stream()
+                .filter((document) -> document.getId().equals(documentId))
+                .forEach((documentToModify) -> documentToModify.setDocumentType(documentType.name()));
+        boolean flowFinished = setUserStatusIfNeeded(userInfo);
+        mapper.save(userInfo, mapperConfig);
+        return flowFinished;
     }
 }
