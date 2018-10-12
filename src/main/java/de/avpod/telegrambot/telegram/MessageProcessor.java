@@ -1,13 +1,20 @@
 package de.avpod.telegrambot.telegram;
 
-import org.telegram.telegrambots.api.methods.send.SendMessage;
+import de.avpod.telegrambot.ProcessingResult;
 import org.telegram.telegrambots.api.objects.Message;
+import org.telegram.telegrambots.api.objects.Update;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public interface MessageProcessor {
+public interface MessageProcessor extends UpdateProcessor {
 
-    Optional<CompletableFuture<SendMessage>> processMessage(Message message);
+    default Optional<CompletableFuture<ProcessingResult>> processUpdate(Update update){
+        if(!update.hasMessage())
+            return Optional.empty();
+        return processMessage(update.getMessage());
+    }
+
+    Optional<CompletableFuture<ProcessingResult>> processMessage(Message message);
 
 }

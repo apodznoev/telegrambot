@@ -5,8 +5,8 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
 import de.avpod.telegrambot.PersistentStorageWrapper;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +17,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @Log4j2
 public class DynamoDBConfguration {
-    private static final String TABLE_NAME = "TelegramBot";
+
+    @Value("${aws.dynamodb.tablename}")
+    private String tableName;
 
     @Value("${aws.s3.region}")
     private String region;
@@ -30,22 +32,16 @@ public class DynamoDBConfguration {
 
     @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     @Bean
-    public PersistentStorageWrapper amazonDynamobDbWrapper(AmazonDynamoDB amazonDynamoDB) throws InterruptedException {
+    public PersistentStorageWrapper amazonDynamobDbWrapper(DynamoDBMapper dynamoDBMapper) {
         log.info("Creating wrapper for DynamoDB table");
 
-        DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
-
-        log.info("Attempting to get table; please wait...");
-        Table table = dynamoDB.getTable(TABLE_NAME);
-        table.waitForActive();
-        log.info("Success getting connection to table {}.  Table status: {}",
-                TABLE_NAME, table.getDescription().getTableStatus()
+        return new DynamoDBWrapper(dynamoDBMapper,
+                new DynamoDBMapperConfig(new DynamoDBMapperConfig.TableNameOverride(tableName))
         );
-        return new DynamoDBWrapper(table);
     }
 
     @Bean
-    @ConditionalOnProperty(value = "aws.s3.localStart", havingValue = "true",matchIfMissing = false)
+    @ConditionalOnProperty(value = "aws.s3.localStart", havingValue = "true", matchIfMissing = false)
     public AmazonDynamoDB amazonCredentialsDynamobDbWrapper() {
         log.info("Creating credentials wrapper for DynamoDB");
         return AmazonDynamoDBClientBuilder.standard()
@@ -64,6 +60,12 @@ public class DynamoDBConfguration {
                 .withRegion(region)
                 .withCredentials(new EC2ContainerCredentialsProviderWrapper())
                 .build();
+    }
+
+    @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
+    @Bean
+    public DynamoDBMapper dynamoDBMapper(AmazonDynamoDB dynamoDB) {
+        return new DynamoDBMapper(dynamoDB);
     }
 
 }

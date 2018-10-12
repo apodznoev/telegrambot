@@ -1,5 +1,6 @@
 package de.avpod.telegrambot.telegram;
 
+import de.avpod.telegrambot.ProcessingResult;
 import de.avpod.telegrambot.TextContents;
 import lombok.extern.log4j.Log4j2;
 import org.telegram.telegrambots.api.methods.send.SendMessage;
@@ -18,19 +19,21 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Log4j2
-public class CustomKeybardTextMessageProcessor implements TextMessageProcessor {
+public class CustomKeybardTextUpdateProcessor implements TextUpdateProcessor {
 
     @Override
-    public Optional<CompletableFuture<SendMessage>> processTextMessage(String messageText, Message message) {
-        if (!messageText.startsWith("/keyboard"))
-            return Optional.empty();
+    public boolean isResponsible(String messageText) {
+        return messageText.startsWith("/keyboard");
+    }
 
+    @Override
+    public Optional<CompletableFuture<ProcessingResult>> processTextMessage(String messageText, Message message) {
         log.info("Processing text message from username: {} with id: {} sent at: {}",
                 message.getFrom().getUserName(), message.getFrom().getId(),
                 new Date(TimeUnit.SECONDS.toMillis(message.getDate()))
         );
 
-        CompletableFuture<SendMessage> responseFuture = new CompletableFuture<>();
+        CompletableFuture<ProcessingResult> responseFuture = new CompletableFuture<>();
 
         SendMessage response;
         if (messageText.contains("reply")) {
@@ -50,12 +53,12 @@ public class CustomKeybardTextMessageProcessor implements TextMessageProcessor {
                                     row1, row2, row3
                             ))
                     )
-                    .setText(TextContents.RECOGNISE_DOCUMENT_TEXT.getText());
+                    .setText(TextContents.RECOGNISE_IMAGE_TEXT.getText());
         } else if (messageText.contains("force")) {
             response = new SendMessage()
                     .setChatId(message.getChat().getId())
                     .setReplyMarkup(new ForceReplyKeyboard())
-                    .setText(TextContents.RECOGNISE_DOCUMENT_TEXT.getText());
+                    .setText(TextContents.RECOGNISE_IMAGE_TEXT.getText());
         } else if (messageText.contains("inline")) {
             response = new SendMessage()
                     .setChatId(message.getChat().getId())
@@ -72,15 +75,15 @@ public class CustomKeybardTextMessageProcessor implements TextMessageProcessor {
                                             new InlineKeyboardButton("Document type photo").setCallbackData("photo")
                                     )
                             )))
-                    .setText(TextContents.RECOGNISE_DOCUMENT_TEXT.getText());
+                    .setText(TextContents.RECOGNISE_IMAGE_TEXT.getText());
         } else {
             response = new SendMessage()
                     .setChatId(message.getChat().getId())
                     .setReplyMarkup(new ReplyKeyboardRemove())
-                    .setText(TextContents.RECOGNISE_DOCUMENT_TEXT.getText());
+                    .setText(TextContents.RECOGNISE_IMAGE_TEXT.getText());
         }
 
-        responseFuture.complete(response);
+        responseFuture.complete(new ProcessingResult(Optional.of(response), Optional.empty()));
         return Optional.of(responseFuture);
     }
 }

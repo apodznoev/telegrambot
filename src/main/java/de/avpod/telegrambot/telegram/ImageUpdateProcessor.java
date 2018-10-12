@@ -1,6 +1,6 @@
 package de.avpod.telegrambot.telegram;
 
-import org.telegram.telegrambots.api.methods.send.SendMessage;
+import de.avpod.telegrambot.ProcessingResult;
 import org.telegram.telegrambots.api.objects.Message;
 import org.telegram.telegrambots.api.objects.PhotoSize;
 
@@ -8,14 +8,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public interface ImageMessageProcessor extends MessageProcessor {
+public interface ImageUpdateProcessor extends MessageProcessor {
 
     @Override
-    default Optional<CompletableFuture<SendMessage>> processMessage(Message message) {
+    default Optional<CompletableFuture<ProcessingResult>> processMessage(Message message) {
         if (!message.hasPhoto())
             return Optional.empty();
         return processImageMessage(message.getPhoto(), message);
     }
 
-    Optional<CompletableFuture<SendMessage>> processImageMessage(List<PhotoSize> document, Message message);
+    Optional<CompletableFuture<ProcessingResult>> processImageMessage(List<PhotoSize> document, Message message);
 }

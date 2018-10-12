@@ -2,6 +2,8 @@ package de.avpod.telegrambot.telegram;
 
 import de.avpod.telegrambot.AvpodBot;
 import de.avpod.telegrambot.CloudWrapper;
+import de.avpod.telegrambot.PersistentStorageWrapper;
+import de.avpod.telegrambot.UserAwareExecutor;
 import de.avpod.telegrambot.aws.DynamoDBConfguration;
 import de.avpod.telegrambot.google.GoogleDriveConfiguration;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,7 +17,6 @@ import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.TelegramBotsApi;
 import org.telegram.telegrambots.exceptions.TelegramApiRequestException;
 import org.telegram.telegrambots.generics.BotSession;
-import org.telegram.telegrambots.generics.LongPollingBot;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,15 +32,16 @@ public class TelegramBotConfiguration {
     private String token;
 
     @Bean
-    BotSession avpodTelegramBot(CloudWrapper cloudWrapper) throws TelegramApiRequestException {
+    BotSession avpodTelegramBot(CloudWrapper cloudWrapper, PersistentStorageWrapper persistentStorageWrapper) throws TelegramApiRequestException {
         ApiContextInitializer.init();
         TelegramBotsApi botsApi = new TelegramBotsApi();
         // Register our bot
-        return botsApi.registerBot(telegramBot(cloudWrapper));
+        return botsApi.registerBot(telegramBot(cloudWrapper, persistentStorageWrapper));
     }
 
     @Bean
-    LongPollingBot telegramBot(CloudWrapper cloudWrapper) {
+    AvpodBot telegramBot(CloudWrapper cloudWrapper, PersistentStorageWrapper persistentStorageWrapper) {
+        ImageTypeRecognitionJobTrigger imageTypeRecognitionJobTrigger = imageTypeRecognitionJobTrigger();
         return new AvpodBot(
                 token,
                 messageProcessors(
@@ -47,10 +49,25 @@ public class TelegramBotConfiguration {
                                 restTemplate()
                         ),
                         cloudWrapper,
-                        handlerExecutor()
+                        handlerExecutor(),
+                        persistentStorageWrapper,
+                        imageTypeRecognitionJobTrigger
                 ),
-                responseExecutor()
+                userAwareResponseExecutor(),
+                persistentStorageWrapper
         );
+    }
+
+    @Bean
+    ImageTypeRecognitionJobTrigger imageTypeRecognitionJobTrigger() {
+        return new ImageTypeRecognitionJobTrigger();
+    }
+
+    @Bean
+    ImageTypeRecognitionJob imageTypeRecognitionJob(AvpodBot bot,
+                                                    ImageTypeRecognitionJobTrigger recognitionJobTrigger,
+                                                    PersistentStorageWrapper persistentStorageWrapper) {
+        return new ImageTypeRecognitionJob(bot, recognitionJobTrigger, persistentStorageWrapper);
     }
 
     private Executor handlerExecutor() {
@@ -67,18 +84,22 @@ public class TelegramBotConfiguration {
     }
 
 
-    private Executor responseExecutor() {
-        return Executors.newSingleThreadExecutor();
+    private UserAwareExecutor userAwareResponseExecutor() {
+        return new UserAwareExecutor(4);
     }
 
-    private List<MessageProcessor> messageProcessors(TelegramFilesLoader telegramFilesUploader,
-                                                     CloudWrapper cloudWrapper,
-                                                     Executor handlerExecutor) {
+    private List<UpdateProcessor> messageProcessors(TelegramFilesLoader telegramFilesUploader,
+                                                    CloudWrapper cloudWrapper,
+                                                    Executor handlerExecutor,
+                                                    PersistentStorageWrapper persistentStorageWrapper,
+                                                    ImageTypeRecognitionJobTrigger imageTypeRecognitionJob) {
         return Arrays.asList(
-                new CustomKeybardTextMessageProcessor(),
-                new UploadDocumentMessageProcessor(telegramFilesUploader, cloudWrapper,handlerExecutor),
-                new UploadImageMessageProcessor(telegramFilesUploader, cloudWrapper,handlerExecutor),
-                new FallbackTextMessageProcessor()
+                new CustomKeybardTextUpdateProcessor(),
+                new UploadDocumentUpdateProcessor(telegramFilesUploader, cloudWrapper,
+                        handlerExecutor, persistentStorageWrapper, imageTypeRecognitionJob),
+                new UploadImageUpdateProcessor(telegramFilesUploader, cloudWrapper,
+                        handlerExecutor, persistentStorageWrapper, imageTypeRecognitionJob),
+                new FallbackTextUpdateProcessor()
 
         );
     }
