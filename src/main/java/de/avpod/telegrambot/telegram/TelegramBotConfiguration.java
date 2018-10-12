@@ -95,6 +95,7 @@ public class TelegramBotConfiguration {
                                                     PersistentStorageWrapper persistentStorageWrapper,
                                                     ImageTypeRecognitionJobTrigger imageTypeRecognitionJob) {
         return Arrays.asList(
+                new CallbackUpdateProcessor(cloudWrapper, persistentStorageWrapper),
                 new CustomKeyboardTextUpdateProcessor(),
                 new UploadDocumentUpdateProcessor(telegramFilesUploader, cloudWrapper,
                         handlerExecutor, persistentStorageWrapper, imageTypeRecognitionJob),
