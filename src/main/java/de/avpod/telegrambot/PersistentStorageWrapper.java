@@ -30,7 +30,7 @@ public interface PersistentStorageWrapper {
 
     UserInfo getFullInfo(String userName);
 
-    boolean deleteDocument(String userName, String documentId);
+    FlowStatus deleteDocument(String userName, String documentId);
 
-    boolean updateDocumentType(String userName, String documentId, DocumentType documentType);
+    FlowStatus updateDocumentType(String userName, String documentId, DocumentType documentType);
 }

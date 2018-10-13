@@ -142,24 +142,25 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
     }
 
     @Override
-    public boolean deleteDocument(String userName, String documentId) {
+    public FlowStatus deleteDocument(String userName, String documentId) {
         log.info("Deleting document {} for user {}", documentId, userName);
         UserInfo userInfo = getFullInfo(userName);
         if (!userInfo.getDocuments().removeIf((document) -> document.getId().equals(documentId))) {
             log.warn("Cannot delete document with id {} not found for user data {}", documentId, userInfo);
-            return false;
+            return FlowStatus.valueOf(userInfo.getStatus());
         }
-        boolean flowFinished = setUserStatusIfNeeded(userInfo);
+        FlowStatus flowStatus = calculateUserStatus(userInfo);
+        userInfo.setStatus(flowStatus.name());
         mapper.save(userInfo, mapperConfig);
-        return flowFinished;
+        return flowStatus;
     }
 
     @Override
-    public boolean updateDocumentType(String userName, String documentId, DocumentType documentType) {
+    public FlowStatus updateDocumentType(String userName, String documentId, DocumentType documentType) {
         return doUpdateDocumentType(userName, documentId, documentType);
     }
 
-    private boolean setUserStatusIfNeeded(UserInfo userInfo) {
+    private FlowStatus calculateUserStatus(UserInfo userInfo) {
         log.info("Checking if user {} has finished the flow", userInfo.getUsername());
         boolean allDocumentsFound;
         Map<DocumentType, Boolean> documentsPresent = new HashMap<>();
@@ -170,25 +171,45 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
             documentsPresent.computeIfPresent(DocumentType.valueOf(document.getDocumentType()), (type, found) -> true);
         }
         allDocumentsFound = documentsPresent.values().stream().reduce(true, (previous, next) -> previous && next);
-        log.info("Flow is finished: {} documents status: {}", allDocumentsFound, documentsPresent);
 
+        FlowStatus newStatus;
         if (allDocumentsFound) {
             log.info("All documents found for user {}", userInfo.getUsername());
-            userInfo.setStatus(FlowStatus.FINISHED.name());
-            return true;
+            newStatus = FlowStatus.FINISHED;
+        } else if (userInfo.getDocuments()
+                .stream()
+                .map(StoredDocument::getDocumentType)
+                .map(DocumentType::valueOf)
+                .noneMatch((documentType ->
+                        documentType == DocumentType.UNKNOWN || documentType == DocumentType.UNKNOWN_REQUESTED))) {
+            boolean allMandatorySubmitted = true;
+            for (DocumentType documentType : DocumentType.mandatoryDocuments()) {
+                allMandatorySubmitted &= documentsPresent.get(documentType);
+            }
+
+            if (allMandatorySubmitted)
+                newStatus = FlowStatus.MANDATORY_DOCUMENTS_SUBMITTED;
+            else
+                newStatus = FlowStatus.WAITING_FILES;
+
+            log.info("There is no more unrecognized documents for user {}  updating status to {}",
+                    userInfo.getUsername(), newStatus);
+        } else {
+            newStatus = FlowStatus.WAITING_DOCUMENT_RECOGNITION;
         }
-        return false;
+        return newStatus;
     }
 
-    private boolean doUpdateDocumentType(String username, String documentId, DocumentType documentType) {
+    private FlowStatus doUpdateDocumentType(String username, String documentId, DocumentType documentType) {
         log.info("Updating document with id {} with type {} for user {}", documentId, documentType, username);
         UserInfo userInfo = getFullInfo(username);
         userInfo.getDocuments()
                 .stream()
                 .filter((document) -> document.getId().equals(documentId))
                 .forEach((documentToModify) -> documentToModify.setDocumentType(documentType.name()));
-        boolean flowFinished = setUserStatusIfNeeded(userInfo);
+        FlowStatus newFlowStatus = calculateUserStatus(userInfo);
+        userInfo.setStatus(newFlowStatus.name());
         mapper.save(userInfo, mapperConfig);
-        return flowFinished;
+        return newFlowStatus;
     }
 }

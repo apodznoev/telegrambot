@@ -62,7 +62,7 @@ public class ImageTypeRecognitionJob {
             List<UnrecognizedDocumentInfo> unrecognizedDocumentInfoList =
                     userInfo.getDocuments()
                             .stream()
-                            .filter((document) -> document.getDocumentType().equals("UNKNOWN"))
+                            .filter((document) -> document.getDocumentType().equals(DocumentType.UNKNOWN.name()))
                             .map((document) -> new UnrecognizedDocumentInfo(
                                     document.getId(), userInfo.getChatId(), document.getCloudIdentifier(),
                                     document.getTelegramFileId(), Optional.ofNullable(document.getTelegramThumbnailId()),
@@ -71,10 +71,7 @@ public class ImageTypeRecognitionJob {
             log.info("Got {} images with unrecognized types for user {}", unrecognizedDocumentInfoList.size(), username);
             for (UnrecognizedDocumentInfo unrecognizedDocumentInfo : unrecognizedDocumentInfoList) {
                 List<InlineKeyboardButton> buttons = new ArrayList<>();
-                for (DocumentType documentType : DocumentType.values()) {
-                    if (documentType == DocumentType.UNKNOWN || documentType == DocumentType.UNKNOWN_REQUESTED)
-                        continue;
-
+                for (DocumentType documentType : DocumentType.realDocuments()) {
                     buttons.add(
                             new InlineKeyboardButton(documentType.getText())
                                     .setCallbackData(

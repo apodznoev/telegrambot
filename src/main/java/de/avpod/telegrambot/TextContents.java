@@ -13,7 +13,11 @@ public enum TextContents {
     RECOGNISE_DOCUMENT_TEXT("Unfortunately our document recognition system type 'EyeBallsSearch' is pretty busy that time," +
             "could you please helps us to identify which type of document is it:"),
     RECOGNISE_IMAGE_TEXT("Unfortunately our image recognition system type 'EyeBallsSearch' is pretty busy that time," +
-            "could you please helps us to identify which type of document is it?");
+            "could you please helps us to identify which type of document is it?"),
+    ALL_DOCUMENTS_RECEIVED("Thank you for submitting all necessary document! Our HR will connect with you soon."),
+    ANSWER_YES_DOCUMENT_WILL_BE_SUBMITTED_YET("Yes, I have some other too."),
+    ANSWER_NO_ALL_DOCUMENTS_ARE_THERE("No, it was it, I don't have anything else"),
+    ARE_YOU_FINISHED("Thank you once again for submitting documents! Do you have any of the remaining ones?");
     private final String text;
 
 

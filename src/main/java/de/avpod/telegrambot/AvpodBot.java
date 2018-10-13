@@ -76,10 +76,10 @@ public class AvpodBot extends TelegramLongPollingBot {
                     if (processingResult == null)
                         return;
 
-                    if (processingResult.getResponseMessage().isPresent()) {
+                    if (processingResult.getMessageAcceptedResponse().isPresent()) {
                         try {
                             log.info("Sending processing result to user {}", update.getMessage().getFrom().getUserName());
-                            Message msg = AvpodBot.this.execute(processingResult.getResponseMessage().get());
+                            Message msg = AvpodBot.this.execute(processingResult.getMessageAcceptedResponse().get());
                             log.info("Response successfully submitted", msg);
                         } catch (TelegramApiException e) {
                             log.error("Unexpected api exception", e);
@@ -90,7 +90,14 @@ public class AvpodBot extends TelegramLongPollingBot {
                     if (processingResult.getStateUpdate().isPresent()) {
                         try {
                             log.info("Processing state update for user {}", update.getMessage().getFrom().getUserName());
-                            processingResult.getStateUpdate().get().run();
+                            Optional<SendMessage> reactionMessage = processingResult.getStateUpdate().get().call();
+                            reactionMessage.ifPresent(method -> {
+                                try {
+                                    AvpodBot.this.execute(method);
+                                } catch (TelegramApiException e) {
+                                    log.error("Error during sending message", e);
+                                }
+                            });
                             log.info("State update successfully finished");
                         } catch (Exception e) {
                             log.error("Error during processing state update", e);
@@ -106,7 +113,7 @@ public class AvpodBot extends TelegramLongPollingBot {
     }
 
     private void initNewUser(User user, Long chatId, FlowStatus flowStatus) {
-        persistentStorage.insertUser(user.getUserName(),user.getFirstName(),user.getLastName(), chatId, flowStatus);
+        persistentStorage.insertUser(user.getUserName(), user.getFirstName(), user.getLastName(), chatId, flowStatus);
     }
 
     private FlowStatus determineFlowStatus(String userName) {

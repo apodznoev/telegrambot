@@ -101,6 +101,7 @@ public class TelegramBotConfiguration {
                         handlerExecutor, persistentStorageWrapper, imageTypeRecognitionJob),
                 new UploadImageUpdateProcessor(telegramFilesUploader, cloudWrapper,
                         handlerExecutor, persistentStorageWrapper, imageTypeRecognitionJob),
+                new ManualFinishTextUpdateProcessor(persistentStorageWrapper),
                 new FallbackTextUpdateProcessor()
 
         );

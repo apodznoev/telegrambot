@@ -1,14 +1,15 @@
 package de.avpod.telegrambot.telegram;
 
-import de.avpod.telegrambot.CloudWrapper;
-import de.avpod.telegrambot.PersistentStorageWrapper;
-import de.avpod.telegrambot.ProcessingResult;
-import de.avpod.telegrambot.RecognizeDocumentCallbackData;
+import de.avpod.telegrambot.*;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.telegram.telegrambots.api.methods.send.SendMessage;
 import org.telegram.telegrambots.api.objects.CallbackQuery;
 import org.telegram.telegrambots.api.objects.Update;
+import org.telegram.telegrambots.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.api.objects.replykeyboard.buttons.KeyboardRow;
 
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -35,28 +36,53 @@ public class CallbackUpdateProcessor implements UpdateProcessor {
         responseFuture.complete(new ProcessingResult(
                 Optional.empty(),
                 Optional.of(() -> {
-                    boolean finished;
+                    FlowStatus newFlowStatus;
                     if (callbackData.isDeleteRequested()) {
                         log.info("Requested deleting of document with id {}", callbackData.getDocumentId());
                         cloudWrapper.deleteDocument(callbackData.getCloudDocumentId());
-                        finished = persistentStorage.deleteDocument(
+                        newFlowStatus = persistentStorage.deleteDocument(
                                 update.getCallbackQuery().getFrom().getUserName(),
                                 callbackData.getDocumentId()
                         );
                     } else {
                         log.info("Processing recognized document type {}", callbackData.getDocumentType());
                         cloudWrapper.recognizeDocument(callbackData.getCloudDocumentId(), callbackData.getDocumentType());
-                        finished = persistentStorage.updateDocumentType(
+                        newFlowStatus = persistentStorage.updateDocumentType(
                                 update.getCallbackQuery().getFrom().getUserName(),
                                 callbackData.getDocumentId(),
                                 callbackData.getDocumentType()
                         );
                     }
-                    if (finished) {
-                        //todo trigger notify job
-                        //todo create job to check if some documents are still missing and gently ask for confirmation
-                        //todo if nothing more to submit
+
+                    if (newFlowStatus == FlowStatus.FINISHED) {
+                        return Optional.of(
+                                new SendMessage()
+                                        .setChatId(update.getMessage().getChatId())
+                                        .setText(TextContents.ALL_DOCUMENTS_RECEIVED.getText())
+                        );
                     }
+
+                    if (newFlowStatus == FlowStatus.MANDATORY_DOCUMENTS_SUBMITTED) {
+                        KeyboardRow row1 = new KeyboardRow();
+                        row1.add(TextContents.ANSWER_YES_DOCUMENT_WILL_BE_SUBMITTED_YET.getText());
+                        KeyboardRow row2 = new KeyboardRow();
+                        row2.add(TextContents.ANSWER_NO_ALL_DOCUMENTS_ARE_THERE.getText());
+                        return Optional.of(
+                                new SendMessage()
+                                        .setChatId(update.getMessage().getChatId())
+                                        .setReplyMarkup(new ReplyKeyboardMarkup()
+                                                .setResizeKeyboard(true)
+                                                .setOneTimeKeyboard(true)
+                                                .setKeyboard(Arrays.asList(
+                                                        row1, row2
+                                                ))
+                                        )
+                                        .setText(TextContents.ARE_YOU_FINISHED.getText())
+                        );
+                    }
+
+                    return Optional.empty();
+
 
                 })
         ));

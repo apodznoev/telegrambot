@@ -54,6 +54,7 @@ public class UploadDocumentUpdateProcessor implements DocumentUpdateProcessor {
                             );
                             persistentStorage.updateFlowStatus(message.getFrom().getUserName(), FlowStatus.WAITING_DOCUMENT_RECOGNITION);
                             imageTypeRecognitionJobTrigger.scheduleRecognition();
+                            return Optional.empty();
                         })
                 );
                 responseFuture.complete(processingResult);

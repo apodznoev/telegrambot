@@ -60,6 +60,7 @@ public class UploadImageUpdateProcessor implements ImageUpdateProcessor {
                             );
                             persistentStorage.updateFlowStatus(message.getFrom().getUserName(), FlowStatus.WAITING_DOCUMENT_RECOGNITION);
                             imageTypeRecognitionJobTrigger.scheduleRecognition();
+                            return Optional.empty();
                         })
                 );
                 responseFuture.complete(processingResult);
