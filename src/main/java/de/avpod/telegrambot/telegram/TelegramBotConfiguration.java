@@ -11,6 +11,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.web.client.RestTemplate;
 import org.telegram.telegrambots.ApiConstants;
 import org.telegram.telegrambots.ApiContextInitializer;
@@ -33,15 +34,18 @@ public class TelegramBotConfiguration {
 
     @Bean
     BotSession avpodTelegramBot(CloudWrapper cloudWrapper,
-                                PersistentStorageWrapper persistentStorageWrapper) throws TelegramApiRequestException {
+                                PersistentStorageWrapper persistentStorageWrapper,
+                                CallbackDataStorage callbackDataStorage) throws TelegramApiRequestException {
         ApiContextInitializer.init();
         TelegramBotsApi botsApi = new TelegramBotsApi();
         // Register our bot
-        return botsApi.registerBot(telegramBot(cloudWrapper, persistentStorageWrapper));
+        return botsApi.registerBot(telegramBot(cloudWrapper, persistentStorageWrapper, callbackDataStorage));
     }
 
     @Bean
-    AvpodBot telegramBot(CloudWrapper cloudWrapper, PersistentStorageWrapper persistentStorageWrapper) {
+    AvpodBot telegramBot(CloudWrapper cloudWrapper,
+                         PersistentStorageWrapper persistentStorageWrapper,
+                         CallbackDataStorage callbackDataStorage) {
         ImageTypeRecognitionJobTrigger imageTypeRecognitionJobTrigger = imageTypeRecognitionJobTrigger();
         return new AvpodBot(
                 token,
@@ -52,7 +56,8 @@ public class TelegramBotConfiguration {
                         cloudWrapper,
                         handlerExecutor(),
                         persistentStorageWrapper,
-                        imageTypeRecognitionJobTrigger
+                        imageTypeRecognitionJobTrigger,
+                        callbackDataStorage
                 ),
                 userAwareResponseExecutor(),
                 persistentStorageWrapper
@@ -67,12 +72,14 @@ public class TelegramBotConfiguration {
     @Bean
     ImageTypeRecognitionJob imageTypeRecognitionJob(AvpodBot bot,
                                                     ImageTypeRecognitionJobTrigger recognitionJobTrigger,
-                                                    PersistentStorageWrapper persistentStorageWrapper) {
-        return new ImageTypeRecognitionJob(bot, recognitionJobTrigger, persistentStorageWrapper);
+                                                    PersistentStorageWrapper persistentStorageWrapper,
+                                                    CallbackDataStorage callbackDataStorage) {
+        return new ImageTypeRecognitionJob(bot, recognitionJobTrigger, persistentStorageWrapper, callbackDataStorage);
     }
 
+
     private Executor handlerExecutor() {
-        return Executors.newFixedThreadPool(4);
+        return Executors.newFixedThreadPool(4, new CustomizableThreadFactory("executor-cloud-connect"));
     }
 
     @Bean
@@ -93,9 +100,10 @@ public class TelegramBotConfiguration {
                                                     CloudWrapper cloudWrapper,
                                                     Executor handlerExecutor,
                                                     PersistentStorageWrapper persistentStorageWrapper,
-                                                    ImageTypeRecognitionJobTrigger imageTypeRecognitionJob) {
+                                                    ImageTypeRecognitionJobTrigger imageTypeRecognitionJob,
+                                                    CallbackDataStorage callbackDataStorage) {
         return Arrays.asList(
-                new CallbackUpdateProcessor(cloudWrapper, persistentStorageWrapper),
+                new CallbackUpdateProcessor(cloudWrapper, persistentStorageWrapper, callbackDataStorage, handlerExecutor),
                 new CustomKeyboardTextUpdateProcessor(),
                 new UploadDocumentUpdateProcessor(telegramFilesUploader, cloudWrapper,
                         handlerExecutor, persistentStorageWrapper, imageTypeRecognitionJob),

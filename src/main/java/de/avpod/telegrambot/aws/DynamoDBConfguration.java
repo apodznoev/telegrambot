@@ -8,6 +8,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
 import de.avpod.telegrambot.PersistentStorageWrapper;
+import de.avpod.telegrambot.telegram.CallbackDataStorage;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -32,12 +33,16 @@ public class DynamoDBConfguration {
 
     @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     @Bean
-    public PersistentStorageWrapper amazonDynamobDbWrapper(DynamoDBMapper dynamoDBMapper) {
+    public PersistentStorageWrapper amazonDynamobDbWrapper(DynamoDBMapper dynamoDBMapper,
+                                                           DynamoDBMapperConfig mapperConfig) {
         log.info("Creating wrapper for DynamoDB table");
 
-        return new DynamoDBWrapper(dynamoDBMapper,
-                new DynamoDBMapperConfig(new DynamoDBMapperConfig.TableNameOverride(tableName))
-        );
+        return new DynamoDBWrapper(dynamoDBMapper, mapperConfig);
+    }
+
+    @Bean
+    public DynamoDBMapperConfig mapperConfig() {
+        return new DynamoDBMapperConfig(new DynamoDBMapperConfig.TableNameOverride(tableName));
     }
 
     @Bean
@@ -68,4 +73,8 @@ public class DynamoDBConfguration {
         return new DynamoDBMapper(dynamoDB);
     }
 
+    @Bean
+    public CallbackDataStorage callbackDataStorage(DynamoDBMapper dynamoDBMapper) {
+        return new CallbackDataStorage(dynamoDBMapper);
+    }
 }

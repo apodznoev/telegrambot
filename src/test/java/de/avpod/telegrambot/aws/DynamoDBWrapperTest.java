@@ -66,7 +66,7 @@ public class DynamoDBWrapperTest {
         ));
         mapper = new DynamoDBMapper(dynamoDB);
         mapper.save(UserInfo.builder()
-                        .chatId(666)
+                        .chatId(666L)
                         .status(FlowStatus.WAITING_FILES.name())
                         .username("test_user")
                         .firstName("Silvester")
@@ -125,7 +125,7 @@ public class DynamoDBWrapperTest {
         assertEquals(FlowStatus.WAITING_DOCUMENT_RECOGNITION.name(), userInfo.getStatus());
         assertEquals("John", userInfo.getFirstName());
         assertEquals("Konnor", userInfo.getLastName());
-        assertEquals(123, userInfo.getChatId());
+        assertEquals(123, (long)userInfo.getChatId());
         assertNotNull(userInfo.getDocuments());
         assertEquals(0, userInfo.getDocuments().size());
     }
@@ -150,7 +150,7 @@ public class DynamoDBWrapperTest {
         assertEquals(FlowStatus.WAITING_FILES.name(), userInfo.getStatus());
         assertEquals("Silvester", userInfo.getFirstName());
         assertEquals("Stallone", userInfo.getLastName());
-        assertEquals(666, userInfo.getChatId());
+        assertEquals(666, (long)userInfo.getChatId());
         assertNotNull(userInfo.getDocuments());
         assertEquals(3, userInfo.getDocuments().size());
         StoredDocument document = userInfo.getDocuments().get(2);
@@ -166,7 +166,7 @@ public class DynamoDBWrapperTest {
     @Test
     public void queryUsersWithImagesWithUnknwonTypes() {
         mapper.save(UserInfo.builder()
-                        .chatId(111)
+                        .chatId(111L)
                         .status(FlowStatus.WAITING_FILES.name())
                         .username("should_not_be_included_known_types")
                         .firstName("Silvester")
@@ -187,7 +187,7 @@ public class DynamoDBWrapperTest {
                         DynamoDBMapperConfig.TableNameOverride.withTableNameReplacement(tableName)
                 ));
         mapper.save(UserInfo.builder()
-                        .chatId(111)
+                        .chatId(111L)
                         .status(FlowStatus.FINISHED.name())
                         .username("should_not_be_included_finished")
                         .firstName("Silvester")
@@ -208,7 +208,7 @@ public class DynamoDBWrapperTest {
                         DynamoDBMapperConfig.TableNameOverride.withTableNameReplacement(tableName)
                 ));
         mapper.save(UserInfo.builder()
-                        .chatId(111)
+                        .chatId(111L)
                         .status(FlowStatus.WAITING_DOCUMENT_RECOGNITION.name())
                         .username("should_not_be_included_no_documents")
                         .firstName("Silvester")
@@ -219,7 +219,7 @@ public class DynamoDBWrapperTest {
                         DynamoDBMapperConfig.TableNameOverride.withTableNameReplacement(tableName)
                 ));
         mapper.save(UserInfo.builder()
-                        .chatId(111)
+                        .chatId(111L)
                         .status(FlowStatus.WAITING_DOCUMENT_RECOGNITION.name())
                         .username("should_be_included")
                         .firstName("Silvester")

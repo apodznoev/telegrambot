@@ -17,7 +17,8 @@ public enum TextContents {
     ALL_DOCUMENTS_RECEIVED("Thank you for submitting all necessary document! Our HR will connect with you soon."),
     ANSWER_YES_DOCUMENT_WILL_BE_SUBMITTED_YET("Yes, I have some other too."),
     ANSWER_NO_ALL_DOCUMENTS_ARE_THERE("No, it was it, I don't have anything else"),
-    ARE_YOU_FINISHED("Thank you once again for submitting documents! Do you have any of the remaining ones?");
+    ARE_YOU_FINISHED("Thank you once again for submitting documents! Do you have any of the remaining ones?"),
+    UNKNOWN_DOCUMENT_TYPE_ANSWER("None of them, delete it");
     private final String text;
 
 

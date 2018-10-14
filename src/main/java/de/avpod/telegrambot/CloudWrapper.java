@@ -2,9 +2,9 @@ package de.avpod.telegrambot;
 
 public interface CloudWrapper {
 
-    String uploadFile(UploadFile uploadFile) throws Exception;
+    String uploadFile(UploadFile uploadFile);
 
-    void recognizeDocument(String cloudId, DocumentType documentType) ;
+    void recognizeDocument(String cloudId, DocumentType documentType);
 
     void deleteDocument(String cloudId);
 }

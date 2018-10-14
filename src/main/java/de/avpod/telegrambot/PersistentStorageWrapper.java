@@ -20,7 +20,7 @@ public interface PersistentStorageWrapper {
                           String cloudFileName,
                           Optional<String> telegramThumbnailId);
 
-    void insertUser(String userName, String firstName, String lastName, Long chatId, FlowStatus flowStatus);
+    void insertUser(String userName, String firstName, String lastName, long chatId, FlowStatus flowStatus);
 
     Collection<UserInfo> queryUsersForImageRecognition();
 

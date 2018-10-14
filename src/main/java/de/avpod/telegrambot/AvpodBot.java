@@ -48,6 +48,7 @@ public class AvpodBot extends TelegramLongPollingBot {
                 try {
                     AvpodBot.this.execute(new SendMessage()
                             .setChatId(update.getMessage().getChatId())
+                            .setParseMode("html")
                             .setText(TextContents.GREETINGS_TEXT.getText())
                     );
                     initNewUser(user, update.getMessage().getChatId(), FlowStatus.WAITING_FILES);
@@ -78,7 +79,7 @@ public class AvpodBot extends TelegramLongPollingBot {
 
                     if (processingResult.getMessageAcceptedResponse().isPresent()) {
                         try {
-                            log.info("Sending processing result to user {}", update.getMessage().getFrom().getUserName());
+                            log.info("Sending processing result to user {}", user.getUserName());
                             Message msg = AvpodBot.this.execute(processingResult.getMessageAcceptedResponse().get());
                             log.info("Response successfully submitted", msg);
                         } catch (TelegramApiException e) {
@@ -89,8 +90,8 @@ public class AvpodBot extends TelegramLongPollingBot {
 
                     if (processingResult.getStateUpdate().isPresent()) {
                         try {
-                            log.info("Processing state update for user {}", update.getMessage().getFrom().getUserName());
-                            Optional<SendMessage> reactionMessage = processingResult.getStateUpdate().get().call();
+                            log.info("Processing state update for user {}", user.getUserName());
+                            Optional<SendMessage> reactionMessage = processingResult.getStateUpdate().get().get();
                             reactionMessage.ifPresent(method -> {
                                 try {
                                     AvpodBot.this.execute(method);
@@ -112,7 +113,7 @@ public class AvpodBot extends TelegramLongPollingBot {
         });
     }
 
-    private void initNewUser(User user, Long chatId, FlowStatus flowStatus) {
+    private void initNewUser(User user, long chatId, FlowStatus flowStatus) {
         persistentStorage.insertUser(user.getUserName(), user.getFirstName(), user.getLastName(), chatId, flowStatus);
     }
 

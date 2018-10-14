@@ -25,7 +25,7 @@ public class UserInfo {
     @DynamoDBAttribute(attributeName = "last_name")
     private String lastName;
     @DynamoDBAttribute(attributeName = "chat_id")
-    private long chatId;
+    private Long chatId;
     @DynamoDBAttribute
     private List<StoredDocument> documents;
 

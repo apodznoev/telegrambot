@@ -63,7 +63,7 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
     }
 
     @Override
-    public void insertUser(String userName, String firstName, String lastName, Long chatId, FlowStatus flowStatus) {
+    public void insertUser(String userName, String firstName, String lastName, long chatId, FlowStatus flowStatus) {
         log.info("Inserting new user {}", userName);
         UserInfo userInfo = UserInfo.builder()
                 .username(userName)

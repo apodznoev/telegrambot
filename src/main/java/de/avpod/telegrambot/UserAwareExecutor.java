@@ -1,6 +1,7 @@
 package de.avpod.telegrambot;
 
 import lombok.extern.log4j.Log4j2;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +19,7 @@ public class UserAwareExecutor {
     public UserAwareExecutor(int threadsCount) {
         availableExecutors = new ArrayList<>();
         for (int i = 0; i < threadsCount; i++) {
-            availableExecutors.add(Executors.newSingleThreadExecutor());
+            availableExecutors.add(Executors.newSingleThreadExecutor(new CustomizableThreadFactory("executor-user")));
         }
         assignedExecutors = new ConcurrentHashMap<>();
         roundRobinCounter = new AtomicInteger();
