@@ -8,6 +8,7 @@ import org.telegram.telegrambots.api.objects.Document;
 import org.telegram.telegrambots.api.objects.Message;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -54,7 +55,7 @@ public class UploadDocumentUpdateProcessor implements DocumentUpdateProcessor {
                             );
                             persistentStorage.updateFlowStatus(message.getFrom().getUserName(), FlowStatus.WAITING_DOCUMENT_RECOGNITION);
                             imageTypeRecognitionJobTrigger.scheduleRecognition();
-                            return Optional.empty();
+                            return Collections.emptyList();
                         })
                 );
                 responseFuture.complete(processingResult);

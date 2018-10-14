@@ -3,6 +3,7 @@ package de.avpod.telegrambot;
 import de.avpod.telegrambot.telegram.UpdateProcessor;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.telegram.telegrambots.api.methods.BotApiMethod;
 import org.telegram.telegrambots.api.methods.send.SendMessage;
 import org.telegram.telegrambots.api.objects.Message;
 import org.telegram.telegrambots.api.objects.Update;
@@ -91,8 +92,8 @@ public class AvpodBot extends TelegramLongPollingBot {
                     if (processingResult.getStateUpdate().isPresent()) {
                         try {
                             log.info("Processing state update for user {}", user.getUserName());
-                            Optional<SendMessage> reactionMessage = processingResult.getStateUpdate().get().get();
-                            reactionMessage.ifPresent(method -> {
+                            List<BotApiMethod> reactionMessage = processingResult.getStateUpdate().get().get();
+                            reactionMessage.forEach(method -> {
                                 try {
                                     AvpodBot.this.execute(method);
                                 } catch (TelegramApiException e) {

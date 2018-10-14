@@ -9,6 +9,7 @@ import lombok.extern.log4j.Log4j2;
 import org.telegram.telegrambots.api.methods.send.SendMessage;
 import org.telegram.telegrambots.api.objects.Message;
 
+import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -39,7 +40,7 @@ public class ManualFinishTextUpdateProcessor implements TextUpdateProcessor {
                         persistentStorage.updateFlowStatus(message.getFrom().getUserName(),
                                 FlowStatus.FINISHED
                         );
-                        return Optional.of(
+                        return Collections.singletonList(
                                 new SendMessage()
                                         .setChatId(message.getChatId())
                                         .setText(TextContents.ALL_DOCUMENTS_RECEIVED.getText())

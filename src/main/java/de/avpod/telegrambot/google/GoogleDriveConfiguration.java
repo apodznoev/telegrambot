@@ -82,8 +82,8 @@ public class GoogleDriveConfiguration {
         Drive drive = new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
                 .setHttpRequestInitializer(request -> {
                     credential.initialize(request);
-                    request.setConnectTimeout(60 * 1000); // 1 minute
-                    request.setReadTimeout(60 * 1000); // 1 minute
+                    request.setConnectTimeout(30 * 1000); // 0.5 minute
+                    request.setReadTimeout(30 * 1000); // 0.5 minute
                 })
                 .setApplicationName(APPLICATION_NAME)
                 .build();

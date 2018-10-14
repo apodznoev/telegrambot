@@ -16,7 +16,7 @@ import java.util.Collections;
 @Log4j2
 public class GoogleDriveWrapper implements CloudWrapper {
     private static final String ROOT_FOLDER_NAME = "TelegramBot";
-    private static final int MAX_RETRIES = 3;
+    private static final int MAX_RETRIES = 5;
     private final Drive drive;
 
     @Override
@@ -32,6 +32,7 @@ public class GoogleDriveWrapper implements CloudWrapper {
                     .execute();
             String rootFolderId;
             if (rootFolderSearch.getFiles().isEmpty()) {
+                //TODO concurrency issues. Possibly lock or generate ids first?
                 File driveRootFolder = new File();
                 driveRootFolder.setName(ROOT_FOLDER_NAME);
                 driveRootFolder.setMimeType("application/vnd.google-apps.folder");
@@ -117,10 +118,9 @@ public class GoogleDriveWrapper implements CloudWrapper {
                 documentTypeFolderId = givenDocumentTypeFolderSearch.getFiles().get(0).getId();
                 log.info("Document type {} folder was found with id {}", documentTypeFolderId);
             }
-            String newParents = previousParents.toString() + "," + documentTypeFolderId;
-            log.info("Moving file {} to parents {}", cloudId, newParents);
+            log.info("Moving file {} to parents {}", cloudId, documentTypeFolderId);
             file = drive.files().update(cloudId, null)
-                    .setAddParents(newParents)
+                    .setAddParents(documentTypeFolderId)
                     .setRemoveParents(previousParents.toString())
                     .setFields("id, parents")
                     .execute();

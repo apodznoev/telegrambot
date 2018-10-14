@@ -9,10 +9,7 @@ import org.telegram.telegrambots.api.objects.PhotoSize;
 
 import java.io.File;
 import java.net.URLConnection;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -60,7 +57,7 @@ public class UploadImageUpdateProcessor implements ImageUpdateProcessor {
                             );
                             persistentStorage.updateFlowStatus(message.getFrom().getUserName(), FlowStatus.WAITING_DOCUMENT_RECOGNITION);
                             imageTypeRecognitionJobTrigger.scheduleRecognition();
-                            return Optional.empty();
+                            return Collections.emptyList();
                         })
                 );
                 responseFuture.complete(processingResult);

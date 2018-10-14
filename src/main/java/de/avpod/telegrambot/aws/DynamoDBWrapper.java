@@ -195,6 +195,7 @@ public class DynamoDBWrapper implements PersistentStorageWrapper {
             log.info("There is no more unrecognized documents for user {}  updating status to {}",
                     userInfo.getUsername(), newStatus);
         } else {
+            log.info("Still some documents for user {} waiting for recognition", userInfo.getUsername());
             newStatus = FlowStatus.WAITING_DOCUMENT_RECOGNITION;
         }
         return newStatus;
