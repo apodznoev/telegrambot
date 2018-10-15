@@ -19,16 +19,16 @@ import org.springframework.context.annotation.Configuration;
 @Log4j2
 public class DynamoDBConfguration {
 
-    @Value("${aws.dynamodb.tablename}")
+    @Value("${aws.dynamodb.tablename:'TelegramBot'}")
     private String tableName;
 
-    @Value("${aws.s3.region}")
+    @Value("${aws.s3.region:'eu-central-1'}")
     private String region;
 
-    @Value("${aws.s3.accessKey}")
+    @Value("${aws.s3.accessKey:''}")
     private String accessKey;
 
-    @Value("${aws.s3.secretKey}")
+    @Value("${aws.s3.secretKey:''}")
     private String secretKey;
 
     @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")

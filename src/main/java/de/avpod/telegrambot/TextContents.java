@@ -7,7 +7,9 @@ import lombok.Getter;
 @Getter
 public enum TextContents {
     GREETINGS_TEXT("Hello, this is Onboarding Bot and I gonna help a little with submitting necessary documents " +
-            "to make your onboarding smooth and pleasant."),
+            "to make your onboarding smooth and pleasant. I will need the following list of documents from you:" +
+            DocumentType.realDocuments().stream().map(DocumentType::getText).reduce((text1, text2) -> text1 + "," + text2).get() + "."
+            + " Please send them just to this chat."),
     DOCUMENT_UPLOAD_ERROR("Sorry, we got some error during upload the file, could your please repeat once again?"),
     DOCUMENT_UPLOAD_SUCCESS("Document was successfully uploaded, thank you!"),
     RECOGNISE_DOCUMENT_TEXT("Unfortunately our document recognition system type 'EyeBallsSearch' is pretty busy that time," +

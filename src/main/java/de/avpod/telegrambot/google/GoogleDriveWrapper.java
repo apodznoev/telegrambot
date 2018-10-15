@@ -8,6 +8,7 @@ import de.avpod.telegrambot.*;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
+import java.io.IOException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.Collections;
@@ -26,46 +27,8 @@ public class GoogleDriveWrapper implements CloudWrapper {
                     uploadFile.getName(), uploadFile.getUsername()
             );
 
-            FileList rootFolderSearch = drive.files()
-                    .list()
-                    .setQ("trashed=false and mimeType='application/vnd.google-apps.folder' and name='" + ROOT_FOLDER_NAME + "'")
-                    .execute();
-            String rootFolderId;
-            if (rootFolderSearch.getFiles().isEmpty()) {
-                //TODO concurrency issues. Possibly lock or generate ids first?
-                File driveRootFolder = new File();
-                driveRootFolder.setName(ROOT_FOLDER_NAME);
-                driveRootFolder.setMimeType("application/vnd.google-apps.folder");
-                driveRootFolder = drive.files().create(driveRootFolder)
-                        .setFields("id, parents")
-                        .execute();
-                rootFolderId = driveRootFolder.getId();
-                log.info("Root folder was created with id {}", rootFolderId);
-            } else {
-                rootFolderId = rootFolderSearch.getFiles().get(0).getId();
-                log.info("Root folder was found with id {}", rootFolderId);
-            }
-
-            FileList userFolderSearch = drive.files()
-                    .list()
-                    .setQ("trashed=false and mimeType='application/vnd.google-apps.folder' and name='" +
-                            uploadFile.getUsername() + "'")
-                    .execute();
-            String userFolderId;
-            if (userFolderSearch.getFiles().isEmpty()) {
-                File driveUserFolder = new File();
-                driveUserFolder.setName(uploadFile.getUsername());
-                driveUserFolder.setMimeType("application/vnd.google-apps.folder");
-                driveUserFolder.setParents(Collections.singletonList(rootFolderId));
-                driveUserFolder = drive.files().create(driveUserFolder)
-                        .setFields("id, parents")
-                        .execute();
-                userFolderId = driveUserFolder.getId();
-                log.info("User folder was created with id {}", userFolderId);
-            } else {
-                userFolderId = userFolderSearch.getFiles().get(0).getId();
-                log.info("User folder was found with id {}", userFolderId);
-            }
+            String rootFolderId = getRootFolderId();
+            String userFolderId = getUserFolderId(rootFolderId, uploadFile.getUsername());
 
             File driveFile = new File();
             driveFile.setName(uploadFile.getName());
@@ -92,32 +55,12 @@ public class GoogleDriveWrapper implements CloudWrapper {
                 previousParents.append(parent);
                 previousParents.append(',');
             }
-            previousParents.deleteCharAt(previousParents.length() -1);
+            previousParents.deleteCharAt(previousParents.length() - 1);
             log.info("Previous parent folders for file {} were {}", cloudId, previousParents);
 
-            FileList givenDocumentTypeFolderSearch = drive.files()
-                    .list()
-                    .setQ("trashed=false and " +
-                            "mimeType='application/vnd.google-apps.folder' and " +
-                            "parents in '" + previousParents.toString() + "' and " +
-                            "name='" + documentType.getSubfolderName() + "'")
-                    .execute();
-            String documentTypeFolderId;
-            if (givenDocumentTypeFolderSearch.getFiles().isEmpty()) {
-                log.info("There is no folder for document type {} yet, creating new", documentType);
-                File driveUserFolder = new File();
-                driveUserFolder.setName(documentType.getSubfolderName());
-                driveUserFolder.setMimeType("application/vnd.google-apps.folder");
-                driveUserFolder.setParents(file.getParents());
-                driveUserFolder = drive.files().create(driveUserFolder)
-                        .setFields("id, parents")
-                        .execute();
-                documentTypeFolderId = driveUserFolder.getId();
-                log.info("Document type {} folder was created with id {}", documentType, documentTypeFolderId);
-            } else {
-                documentTypeFolderId = givenDocumentTypeFolderSearch.getFiles().get(0).getId();
-                log.info("Document type {} folder was found with id {}", documentTypeFolderId);
-            }
+            String documentTypeFolderId = getDocumentFolderId(previousParents.toString(), documentType);
+
+
             log.info("Moving file {} to parents {}", cloudId, documentTypeFolderId);
             file = drive.files().update(cloudId, null)
                     .setAddParents(documentTypeFolderId)
@@ -157,5 +100,122 @@ public class GoogleDriveWrapper implements CloudWrapper {
         }
         log.error("Retries exceeded, giving up");
         throw new RuntimeException("Retries exceeded, giving up");
+    }
+
+    private String getRootFolderId() throws IOException {
+        String rootFolderId;
+        FileList rootFolderSearch = drive.files()
+                .list()
+                .setQ("trashed=false and mimeType='application/vnd.google-apps.folder' and name='" + ROOT_FOLDER_NAME + "'")
+                .execute();
+
+        if (rootFolderSearch.getFiles().isEmpty()) {
+            synchronized (GoogleDriveWrapper.this) {
+                rootFolderSearch = drive.files()
+                        .list()
+                        .setQ("trashed=false and mimeType='application/vnd.google-apps.folder' and name='" + ROOT_FOLDER_NAME + "'")
+                        .execute();
+                if (rootFolderSearch.getFiles().isEmpty()) {
+                    File driveRootFolder = new File();
+                    driveRootFolder.setName(ROOT_FOLDER_NAME);
+                    driveRootFolder.setMimeType("application/vnd.google-apps.folder");
+                    driveRootFolder = drive.files().create(driveRootFolder)
+                            .setFields("id, parents")
+                            .execute();
+                    rootFolderId = driveRootFolder.getId();
+                    log.info("Root folder was created with id {}", rootFolderId);
+                } else {
+                    rootFolderId = rootFolderSearch.getFiles().get(0).getId();
+                    log.info("Root folder was found with id {}", rootFolderId);
+                }
+            }
+        } else {
+            rootFolderId = rootFolderSearch.getFiles().get(0).getId();
+            log.info("Root folder was found with id {}", rootFolderId);
+        }
+        return rootFolderId;
+    }
+
+    private String getUserFolderId(String rootFolderId, String username) throws IOException {
+        String userFolderId;
+        FileList userFolderSearch = drive.files()
+                .list()
+                .setQ("trashed=false and mimeType='application/vnd.google-apps.folder' and name='" +
+                        username + "'")
+                .execute();
+
+        if (userFolderSearch.getFiles().isEmpty()) {
+            synchronized (GoogleDriveWrapper.this) {
+                userFolderSearch = drive.files()
+                        .list()
+                        .setQ("trashed=false and mimeType='application/vnd.google-apps.folder' and name='" +
+                                username + "'")
+                        .execute();
+                //TODO concurrency issues. lock on username here?
+                if (userFolderSearch.getFiles().isEmpty()) {
+                    File driveUserFolder = new File();
+                    driveUserFolder.setName(username);
+                    driveUserFolder.setMimeType("application/vnd.google-apps.folder");
+                    driveUserFolder.setParents(Collections.singletonList(rootFolderId));
+                    driveUserFolder = drive.files().create(driveUserFolder)
+                            .setFields("id, parents")
+                            .execute();
+                    userFolderId = driveUserFolder.getId();
+                    log.info("User folder was created with id {}", userFolderId);
+                } else {
+                    userFolderId = userFolderSearch.getFiles().get(0).getId();
+                    log.info("User folder was found with id {}", userFolderId);
+                }
+            }
+        } else {
+            userFolderId = userFolderSearch.getFiles().get(0).getId();
+            log.info("User folder was found with id {}", userFolderId);
+        }
+        return userFolderId;
+    }
+
+    private String getDocumentFolderId(String parents, DocumentType documentType) throws IOException {
+        String documentTypeFolderId;
+
+        FileList givenDocumentTypeFolderSearch = drive.files()
+                .list()
+                .setQ("trashed=false and " +
+                        "mimeType='application/vnd.google-apps.folder' and " +
+                        "parents in '" + parents + "' and " +
+                        "name='" + documentType.getSubfolderName() + "'")
+                .execute();
+
+        if (givenDocumentTypeFolderSearch.getFiles().isEmpty()) {
+            synchronized (GoogleDriveWrapper.this) {
+                //todo lock on username
+                givenDocumentTypeFolderSearch = drive.files()
+                        .list()
+                        .setQ("trashed=false and " +
+                                "mimeType='application/vnd.google-apps.folder' and " +
+                                "parents in '" + parents + "' and " +
+                                "name='" + documentType.getSubfolderName() + "'")
+                        .execute();
+
+                if (givenDocumentTypeFolderSearch.getFiles().isEmpty()) {
+                    log.info("There is no folder for document type {} yet, creating new", documentType);
+                    File driveUserFolder = new File();
+                    driveUserFolder.setName(documentType.getSubfolderName());
+                    driveUserFolder.setMimeType("application/vnd.google-apps.folder");
+                    driveUserFolder.setParents(Collections.singletonList(parents));
+                    driveUserFolder = drive.files().create(driveUserFolder)
+                            .setFields("id, parents")
+                            .execute();
+                    documentTypeFolderId = driveUserFolder.getId();
+                    log.info("Document type {} folder was created with id {}", documentType, documentTypeFolderId);
+                } else {
+                    documentTypeFolderId = givenDocumentTypeFolderSearch.getFiles().get(0).getId();
+                    log.info("Document type {} folder was found with id {}", documentTypeFolderId);
+                }
+            }
+        } else {
+            documentTypeFolderId = givenDocumentTypeFolderSearch.getFiles().get(0).getId();
+            log.info("Document type {} folder was found with id {}", documentTypeFolderId);
+        }
+        return documentTypeFolderId;
     }
 }
